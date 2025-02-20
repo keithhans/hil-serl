@@ -23,9 +23,13 @@ class DualViewEnv:
         glfw.set_window_pos(self.window1, 100, 100)
         glfw.set_window_pos(self.window2, 1000, 100)
         
+        # 获取帧缓冲区大小（处理 Retina 显示器）
+        framebuffer_width1, framebuffer_height1 = glfw.get_framebuffer_size(self.window1)
+        framebuffer_width2, framebuffer_height2 = glfw.get_framebuffer_size(self.window2)
+        
         # 初始化渲染配置
-        self.config1 = self._setup_window(self.window1, self.model, "top")
-        self.config2 = self._setup_window(self.window2, self.model, "side")
+        self.config1 = self._setup_window(self.window1, self.model, "top", framebuffer_width1, framebuffer_height1)
+        self.config2 = self._setup_window(self.window2, self.model, "side", framebuffer_width2, framebuffer_height2)
 
     # 自定义视角配置函数
     def _setup_custom_view(self, cam, view_type):
@@ -46,7 +50,7 @@ class DualViewEnv:
             cam.azimuth = 90      # 正侧面视角
 
     # 窗口配置函数
-    def _setup_window(self, window, model, view_type):
+    def _setup_window(self, window, model, view_type, fb_width, fb_height):
         glfw.make_context_current(window)
         
         # 创建渲染上下文
@@ -65,7 +69,7 @@ class DualViewEnv:
             "cam": cam,
             "opt": opt,
             "context": context,
-            "viewport": mujoco.MjrRect(0, 0, self.window_width, self.window_height)
+            "viewport": mujoco.MjrRect(0, 0, fb_width, fb_height)  # 使用帧缓冲区大小
         }
 
     def run(self, 
@@ -103,9 +107,15 @@ class DualViewEnv:
 
     def _render_window(self, window, config):
         glfw.make_context_current(window)
+                
+        # 更新场景
         mujoco.mjv_updateScene(self.model, self.data, config["opt"], None, 
-                             config["cam"], mujoco.mjtCatBit.mjCAT_ALL.value, config["scene"])
+                              config["cam"], mujoco.mjtCatBit.mjCAT_ALL.value, config["scene"])
+        
+        # 渲染场景
         mujoco.mjr_render(config["viewport"], config["scene"], config["context"])
+        
+        # 交换缓冲区
         glfw.swap_buffers(window)
 
     @property
