@@ -3,6 +3,7 @@ import multiprocessing
 import numpy as np
 import inputs
 import hid
+import threading
 
 from franka_env.spacemouse import pyspacemouse
 from typing import Tuple
@@ -210,59 +211,48 @@ class TGZJoystickExpert:
     a "get_action" method to get the latest action and button state.
     """
 
-
     def __init__(self):
+        # 直接使用普通的字典，因为线程共享内存
+        self.latest_data = {
+            "action": [0.0] * 6,
+            "buttons": [False, False]
+        }
+
+        # 使用线程替代进程
+        self.thread = threading.Thread(target=self._read_joystick)
+        self.thread.daemon = True  # 仍然保持daemon特性
+        self.thread.start()
+
+    def _read_joystick(self):
+        # 在线程中初始化设备
         vendor_id=1118
         product_id=654
         self._device = hid.device()
+        print(f"Opening device in thread {threading.current_thread().name}")
         self._device.open(vendor_id, product_id)
         self._device.set_nonblocking(True)
-        print(
-          "Connected to"
-          f" {self._device.get_manufacturer_string()} "
-          f"{self._device.get_product_string()}"
-        )
-
-        # Manager to handle shared state between processes
-        self.manager = multiprocessing.Manager()
-        self.latest_data = self.manager.dict()
-        self.latest_data["action"] = [0.0] * 6
-        self.latest_data["buttons"] = [False, False]
-
-        # Start a process to continuously read Joystick state
-        self.process = multiprocessing.Process(target=self._read_joystick)
-        self.process.daemon = True
-        self.process.start()
-
-
-    def _read_joystick(self):        
-        action = [0.0] * 6
-        buttons = [False, False]
         
         while True:
-            # Get data
+            # 原有的读取逻辑保持不变
             data = self._device.read(64)
+            if data:
+                action = list(self.latest_data["action"])  # 创建副本以避免竞态条件
+                buttons = list(self.latest_data["buttons"])
 
-            left_x = -(data[6] - 128) / 128.0 if data[7] > 0 else 0
-            left_y = (data[8] - 128) / 128.0 if data[9] > 0 else 0
-            right_x = -(data[10] - 128) / 128.0 if data[11] > 0 else 0
-            right_y = -(data[12] - 128) / 128.0 if data[13] > 0 else 0
+                left_x = -(data[6] - 128) / 128.0 if data[7] > 0 else 0
+                left_y = (data[8] - 128) / 128.0 if data[9] > 0 else 0
+                right_x = -(data[10] - 128) / 128.0 if data[11] > 0 else 0
+                right_y = -(data[12] - 128) / 128.0 if data[13] > 0 else 0
 
-            # todo update action & button
-            action[0] = left_x * 0.4
-            action[1] = left_y * 0.4
-            action[2] = right_y * 0.8
-            # action[3]
-            # action[4]
-            action[5] = right_x * 1.2
+                action[0] = left_x * 0.4
+                action[1] = left_y * 0.4
+                action[2] = right_y * 0.8
+                action[5] = right_x * 1.2
 
-            # buttons[0], buttons[1] 
-
-        
-            # Update the shared state
-            self.latest_data["action"] = action
-            self.latest_data["buttons"] = buttons
-                
+                # 更新共享数据
+                self.latest_data["action"] = action
+                self.latest_data["buttons"] = buttons
+    
     def get_action(self):
         """Returns the latest action and button state from the Joystick."""
         action = self.latest_data["action"]
@@ -270,4 +260,5 @@ class TGZJoystickExpert:
         return np.array(action), buttons
     
     def close(self):
-        self.process.terminate()
+        # 线程会随主程序退出而退出，不需要显式终止
+        self._device.close()
