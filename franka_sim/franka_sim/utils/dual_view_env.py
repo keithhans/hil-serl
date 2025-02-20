@@ -4,9 +4,9 @@ import numpy as np
 from typing import Callable
 
 class DualViewEnv:
-    def __init__(self, model_path: str = "../envs/xmls/arena.xml"):
-        self.model = mujoco.MjModel.from_xml_path(model_path)
-        self.data = mujoco.MjData(self.model)
+    def __init__(self, model, data):
+        self.model = model
+        self.data = data
         
         # 窗口参数
         self.window_width = 800
@@ -18,7 +18,7 @@ class DualViewEnv:
             raise Exception("GLFW 初始化失败")
             
         # 创建双窗口
-        self.window1 = glfw.create_window(self.window_width, self.window_height, "View 1 - 俯视", None, None)
+        self.window1 = glfw.create_window(self.window_width, self.window_height, "View 1 - 右视", None, None)
         self.window2 = glfw.create_window(self.window_width, self.window_height, "View 2 - 侧视", None, None)
         glfw.set_window_pos(self.window1, 100, 100)
         glfw.set_window_pos(self.window2, 1000, 100)
@@ -28,24 +28,24 @@ class DualViewEnv:
         framebuffer_width2, framebuffer_height2 = glfw.get_framebuffer_size(self.window2)
         
         # 初始化渲染配置
-        self.config1 = self._setup_window(self.window1, self.model, "top", framebuffer_width1, framebuffer_height1)
+        self.config1 = self._setup_window(self.window1, self.model, "right", framebuffer_width1, framebuffer_height1)
         self.config2 = self._setup_window(self.window2, self.model, "side", framebuffer_width2, framebuffer_height2)
 
     # 自定义视角配置函数
     def _setup_custom_view(self, cam, view_type):
-        if view_type == "top":
+        if view_type == "right":
             # 俯视视角
             cam.type = mujoco.mjtCamera.mjCAMERA_FREE
             cam.lookat = np.array([0, 0, 0])  # 看向原点
-            cam.distance = 3.0    # 观察距离
-            cam.elevation = -90   # 俯视角度（-90度垂直向下）
-            cam.azimuth = 0       # 水平旋转角度
+            cam.distance = 2.0    # 观察距离
+            cam.elevation = -20   # 俯视角度
+            cam.azimuth = 180       # 右视图
         elif view_type == "side":
             # 侧视视角
             cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
             cam.trackbodyid = 0   # 跟踪根物体
             cam.lookat = np.array([0, 0, 1.5])  # 看向腰部高度
-            cam.distance = 4.0
+            cam.distance = 2.0
             cam.elevation = -20   # 稍微俯视
             cam.azimuth = 90      # 正侧面视角
 
@@ -87,7 +87,7 @@ class DualViewEnv:
         while not self.should_close:
             if not pause:
                 # 执行物理模拟
-                mujoco.mj_step(self.model, self.data, nstep=int(speed))
+                # mujoco.mj_step(self.model, self.data, nstep=int(speed))
                 
                 # 用户自定义步进逻辑
                 if on_step:
