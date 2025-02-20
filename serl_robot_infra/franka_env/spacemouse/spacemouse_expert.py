@@ -239,10 +239,10 @@ class TGZJoystickExpert:
                 action = list(self.latest_data["action"])  # 创建副本以避免竞态条件
                 buttons = list(self.latest_data["buttons"])
 
-                left_x = -(data[6] - 128) / 128.0 if data[7] > 0 else 0
+                left_x = (data[6] - 128) / 128.0 if data[7] > 0 else 0
                 left_y = (data[8] - 128) / 128.0 if data[9] > 0 else 0
-                right_x = -(data[10] - 128) / 128.0 if data[11] > 0 else 0
-                right_y = -(data[12] - 128) / 128.0 if data[13] > 0 else 0
+                right_x = (data[10] - 128) / 128.0 if data[11] > 0 else 0
+                right_y = (data[12] - 128) / 128.0 if data[13] > 0 else 0
 
                 action[0] = left_x * 0.4
                 action[1] = left_y * 0.4
