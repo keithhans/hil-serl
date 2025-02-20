@@ -212,19 +212,17 @@ class TGZJoystickExpert:
     """
 
     def __init__(self):
-        # 直接使用普通的字典，因为线程共享内存
         self.latest_data = {
             "action": [0.0] * 6,
             "buttons": [False, False]
         }
-
-        # 使用线程替代进程
+        self._running = True  # 添加运行标志
+        
         self.thread = threading.Thread(target=self._read_joystick)
-        self.thread.daemon = True  # 仍然保持daemon特性
+        self.thread.daemon = True
         self.thread.start()
 
     def _read_joystick(self):
-        # 在线程中初始化设备
         vendor_id=1118
         product_id=654
         self._device = hid.device()
@@ -232,33 +230,37 @@ class TGZJoystickExpert:
         self._device.open(vendor_id, product_id)
         self._device.set_nonblocking(True)
         
-        while True:
-            # 原有的读取逻辑保持不变
-            data = self._device.read(64)
-            if data:
-                action = list(self.latest_data["action"])  # 创建副本以避免竞态条件
-                buttons = list(self.latest_data["buttons"])
+        while self._running:  # 使用运行标志控制循环
+            try:
+                data = self._device.read(64)
+                if data:
+                    action = list(self.latest_data["action"])  # 创建副本以避免竞态条件
+                    buttons = list(self.latest_data["buttons"])
 
-                left_x = (data[6] - 128) / 128.0 if data[7] > 0 else 0
-                left_y = (data[8] - 128) / 128.0 if data[9] > 0 else 0
-                right_x = (data[10] - 128) / 128.0 if data[11] > 0 else 0
-                right_y = (data[12] - 128) / 128.0 if data[13] > 0 else 0
-            
+                    left_x = (data[6] - 128) / 128.0 if data[7] > 0 else 0
+                    left_y = (data[8] - 128) / 128.0 if data[9] > 0 else 0
+                    right_x = (data[10] - 128) / 128.0 if data[11] > 0 else 0
+                    right_y = (data[12] - 128) / 128.0 if data[13] > 0 else 0
+                
 
-                buttons[0] = bool(data[3] & 1)
-                buttons[1] = bool(data[3] & 2)
+                    buttons[0] = bool(data[3] & 1)
+                    buttons[1] = bool(data[3] & 2)
 
-                action[0] = left_x * 0.2
-                action[1] = left_y * 0.2
-                action[2] = right_y * 0.2
+                    action[0] = left_x * 0.2
+                    action[1] = left_y * 0.2
+                    action[2] = right_y * 0.2
 
-                # todo: get rotation work
-                action[5] = right_x * 0.5
+                    # todo: get rotation work
+                    action[5] = right_x * 0.5
 
-                # 更新共享数据
-                self.latest_data["action"] = action
-                self.latest_data["buttons"] = buttons
-    
+                    # 更新共享数据
+                    self.latest_data["action"] = action
+                    self.latest_data["buttons"] = buttons
+            except Exception as e:
+                if self._running:  # 只在正常运行时打印错误
+                    print(f"Error reading joystick: {e}")
+                break
+
     def get_action(self):
         """Returns the latest action and button state from the Joystick."""
         action = self.latest_data["action"]
@@ -266,5 +268,12 @@ class TGZJoystickExpert:
         return np.array(action), buttons
     
     def close(self):
-        # 线程会随主程序退出而退出，不需要显式终止
-        self._device.close()
+        """优雅地关闭设备和线程"""
+        self._running = False
+        if hasattr(self, '_device'):
+            try:
+                self._device.close()
+            except Exception as e:
+                print(f"Error closing device: {e}")
+        # 给线程一点时间来清理
+        self.thread.join(timeout=0.1)
