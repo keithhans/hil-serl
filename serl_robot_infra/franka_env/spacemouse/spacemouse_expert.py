@@ -2,6 +2,8 @@ import time
 import multiprocessing
 import numpy as np
 import inputs
+import hid
+
 from franka_env.spacemouse import pyspacemouse
 from typing import Tuple
 from dataclasses import dataclass
@@ -191,6 +193,76 @@ class JoystickExpert:
                 print("No controller found. Retrying...")
                 time.sleep(1)
 
+    def get_action(self):
+        """Returns the latest action and button state from the Joystick."""
+        action = self.latest_data["action"]
+        buttons = self.latest_data["buttons"]
+        return np.array(action), buttons
+    
+    def close(self):
+        self.process.terminate()
+
+
+class TGZJoystickExpert:
+    """
+    This class provides an interface to the Joystick/Gamepad.
+    It continuously reads the joystick state and provides
+    a "get_action" method to get the latest action and button state.
+    """
+
+
+    def __init__(self):
+        vendor_id=1118
+        product_id=654
+        self._device = hid.device()
+        self._device.open(vendor_id, product_id)
+        self._device.set_nonblocking(True)
+        print(
+          "Connected to"
+          f" {self._device.get_manufacturer_string()} "
+          f"{self._device.get_product_string()}"
+        )
+
+        # Manager to handle shared state between processes
+        self.manager = multiprocessing.Manager()
+        self.latest_data = self.manager.dict()
+        self.latest_data["action"] = [0.0] * 6
+        self.latest_data["buttons"] = [False, False]
+
+        # Start a process to continuously read Joystick state
+        self.process = multiprocessing.Process(target=self._read_joystick)
+        self.process.daemon = True
+        self.process.start()
+
+
+    def _read_joystick(self):        
+        action = [0.0] * 6
+        buttons = [False, False]
+        
+        while True:
+            # Get data
+            data = self._device.read(64)
+
+            left_x = -(data[6] - 128) / 128.0 if data[7] > 0 else 0
+            left_y = (data[8] - 128) / 128.0 if data[9] > 0 else 0
+            right_x = -(data[10] - 128) / 128.0 if data[11] > 0 else 0
+            right_y = -(data[12] - 128) / 128.0 if data[13] > 0 else 0
+
+            # todo update action & button
+            action[0] = left_x * 0.4
+            action[1] = left_y * 0.4
+            action[2] = right_y * 0.8
+            # action[3]
+            # action[4]
+            action[5] = right_x * 1.2
+
+            # buttons[0], buttons[1] 
+
+        
+            # Update the shared state
+            self.latest_data["action"] = action
+            self.latest_data["buttons"] = buttons
+                
     def get_action(self):
         """Returns the latest action and button state from the Joystick."""
         action = self.latest_data["action"]
