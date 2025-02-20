@@ -45,9 +45,6 @@ with dual_viewer as viewer:
         speed=1.0,  # 1.5倍速运行
         pause=False
     )
-    # for i in range(100000):
-    #     env.step(np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
-    #     viewer.sync()
 
 
 
