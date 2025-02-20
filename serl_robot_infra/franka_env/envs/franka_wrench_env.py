@@ -15,7 +15,7 @@ from typing import Dict
 
 from franka_env.camera.video_capture import VideoCapture
 from franka_env.camera.multi_video_capture import MultiVideoCapture
-from franka_env.camera.rs_capture import RSCapture
+# from franka_env.camera.rs_capture import RSCapture
 from franka_env.utils.rotations import euler_2_quat, quat_2_euler
 
 
@@ -262,8 +262,8 @@ class FrankaWrenchEnv(gym.Env):
             self.close_cameras()
 
         caps = OrderedDict()
-        for cam_name, kwargs in name_serial_dict.items():
-            caps[cam_name] = RSCapture(name=cam_name, **kwargs)
+        # for cam_name, kwargs in name_serial_dict.items():
+        #     caps[cam_name] = RSCapture(name=cam_name, **kwargs)
 
         self.cap = MultiVideoCapture(caps)
 

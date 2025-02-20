@@ -14,7 +14,7 @@ from collections import OrderedDict
 from typing import Dict
 
 from franka_env.camera.video_capture import VideoCapture
-from franka_env.camera.rs_capture import RSCapture
+#from franka_env.camera.rs_capture import RSCapture
 from franka_env.utils.rotations import euler_2_quat, quat_2_euler
 
 
@@ -396,11 +396,11 @@ class FrankaEnv(gym.Env):
             self.close_cameras()
 
         self.cap = OrderedDict()
-        for cam_name, kwargs in name_serial_dict.items():
-            cap = VideoCapture(
-                RSCapture(name=cam_name, **kwargs)
-            )
-            self.cap[cam_name] = cap
+        # for cam_name, kwargs in name_serial_dict.items():
+        #     cap = VideoCapture(
+        #         RSCapture(name=cam_name, **kwargs)
+        #     )
+        #     self.cap[cam_name] = cap
 
     def close_cameras(self):
         """Close both wrist cameras."""
