@@ -239,19 +239,19 @@ class TGZJoystickExpert:
 
                     left_x = (data[6] - 128) / 128.0 if data[7] > 0 else 0
                     left_y = (data[8] - 128) / 128.0 if data[9] > 0 else 0
-                    right_x = (data[10] - 128) / 128.0 if data[11] > 0 else 0
+                    # right_x = (data[10] - 128) / 128.0 if data[11] > 0 else 0
                     right_y = (data[12] - 128) / 128.0 if data[13] > 0 else 0
                 
 
                     buttons[0] = bool(data[3] & 1)
                     buttons[1] = bool(data[3] & 2)
 
-                    action[0] = left_x * 0.2
-                    action[1] = left_y * 0.2
-                    action[2] = right_y * 0.2
+                    action[0] = left_x * 0.1
+                    action[1] = left_y * 0.1
+                    action[2] = right_y * 0.1
 
                     # todo: get rotation work
-                    action[5] = right_x * 0.5
+                    # action[5] = right_x * 0.5
 
                     # 更新共享数据
                     self.latest_data["action"] = action
